@@ -1,149 +1,189 @@
 let table;
+let day = 0;
 
-let labels = [];   // labels[sample] is the name of a point in time, like "Jan 2022"
-let values = [];   // values[layer][sample] is the height of one layer at one point in time
+// Arrays
+let elements = ["Rain", "Sunshine", "Wind", "Cloudiness", "Temperature"];
+let maxValues = [100, 12, 50, 100, 35];
+let units = ["%", "h", "km/h", "%", "°C"];
+let colors = ["#00BFFF", "#FFE600", "#00FFD1", "#D4D8DE", "#FF541F"];
 
-// vivid colors on a white background
-let colors = [
-    "#ff3366", "#ff7a00", "#ffd400", "#7cff4f", "#00e5a0",
-    "#00c2ff", "#3d5aff", "#9b5cff", "#ff4fd8", "#111111",
-];
+let animatedValues = [0, 0, 0, 0, 0];
 
-let margin = 80;                  // the space left and right of the chart
-let handleRadius = 10;            // half the size of a handle
-let chartTop;                     // the top of the chart
-let chartBottom;                  // the baseline of the chart
-let sliderY;                      // the height of the time slider
-let sliderLeft, sliderRight;      // where the slider starts and ends, and also the left and right edge of the chart
-let handleX1, handleX2;           // the x-positions of the two handles
-let dragging = 0;                 // 0 = no handle, 1 = left handle, 2 = right handle
-let maxTotal = 0;                 // the highest stack of all layers, to scale the chart
+let dia = 36;
+let spacing = 38;
+let navSpacing = 42;
+
+let baseRadius = 105;
+let ringSpacing = 48;
 
 async function setup() {
-    createCanvas(windowWidth, windowHeight);
-    noStroke();
+  createCanvas(windowWidth, windowHeight);
+  noStroke();
 
-    table = await loadTable("layers.csv", ",", "header");
-
-    // the first column holds the labels, every other column is one layer
-    let sampleCount = table.getRowCount();
-    let layerCount = table.getColumnCount() - 1;
-
-    for (let sample = 0; sample < sampleCount; sample++) {
-        labels.push(table.getString(sample, 0));
-    }
-
-    for (let layer = 0; layer < layerCount; layer++) {
-        values[layer] = [];
-        for (let sample = 0; sample < sampleCount; sample++) {
-            values[layer].push(table.getNum(sample, layer + 1));
-        }
-    }
-
-    // find the highest stack, so the tallest sample fills the chart
-    for (let sample = 0; sample < sampleCount; sample++) {
-        let total = 0;
-        for (let layer = 0; layer < layerCount; layer++) {
-            total += values[layer][sample];
-        }
-        maxTotal = max(maxTotal, total);
-    }
-
-    chartTop = 60;
-    sliderY = height - 90;
-    chartBottom = sliderY - 50;
-    sliderLeft = margin;
-    sliderRight = width - margin;
-    handleX1 = sliderLeft;
-    handleX2 = sliderRight;
+  table = await loadTable("weather_random.csv", ",", "header");
 }
 
 function draw() {
-    background(255);
+  background(5);
 
-    let sampleCount = labels.length;
-    let pixelsPerUnit = (chartBottom - chartTop) / maxTotal; // how many pixels one unit of data is high
+  if (!table) return;
 
-    // the handles decide which samples are shown
-    let first = floor(map(handleX1, sliderLeft, sliderRight, 0, sampleCount));
-    let last = floor(map(handleX2, sliderLeft, sliderRight, 0, sampleCount));
-    first = min(first, sampleCount - 2);
-    last = max(last, first + 2); // always show at least two samples
+  let centerX = width / 2;
+  let centerY = height / 2 - 50;
 
-    // sums[sample] is the height of all layers drawn so far
-    let sums = [];
-    for (let sample = 0; sample < sampleCount; sample++) {
-        sums.push(0);
+  let navY = centerY + 350;
+  let tipY = navY + 50;
+
+  cursor(ARROW);
+
+  // Navigation: switch days by hovering
+  for (let i = 0; i < 7; i++) {
+
+    let x = centerX + (i - 3) * navSpacing;
+
+    if (dist(mouseX, mouseY, x, navY) < 16) {
+      day = i;
+      cursor(HAND);
     }
 
-    // draw the layers from bottom to top
-    for (let layer = 0; layer < values.length; layer++) {
-        fill(colors[layer % colors.length]);
-        beginShape();
+    if (i === day) {
+      fill(255);
+      circle(x, navY, 20);
+    } else {
+      fill(90);
+      circle(x, navY, 12);
+    }
+  }
 
-        // the top edge, from left to right
-        for (let sample = first; sample < last; sample++) {
-            let x = map(sample, first, last - 1, sliderLeft, sliderRight);
-            vertex(x, chartBottom - (sums[sample] + values[layer][sample]) * pixelsPerUnit);
-        }
+  // Weather circles
+  push();
+  translate(centerX, centerY);
 
-        // the bottom edge, from right to left
-        for (let sample = last - 1; sample >= first; sample--) {
-            let x = map(sample, first, last - 1, sliderLeft, sliderRight);
-            vertex(x, chartBottom - sums[sample] * pixelsPerUnit);
-        }
+  for (let i = 0; i < elements.length; i++) {
 
-        endShape(CLOSE);
+    let value = table.getNum(day, elements[i]);
+    let radius = baseRadius + i * ringSpacing;
 
-        // the next layer sits on top of this one
-        for (let sample = first; sample < last; sample++) {
-            sums[sample] += values[layer][sample];
-        }
+    // Convert weather value into number of dots
+    let maxDots = floor(TWO_PI * radius / spacing);
+    let targetDots = floor(map(value, 0, maxValues[i], 0, maxDots) + 0.5);
+
+    // Animation: increase or decrease the number of dots
+    if (animatedValues[i] < targetDots) {
+      animatedValues[i] += 0.2;
+
+      if (animatedValues[i] > targetDots) {
+        animatedValues[i] = targetDots;
+      }
+
+    } else if (animatedValues[i] > targetDots) {
+      animatedValues[i] -= 0.2;
+
+      if (animatedValues[i] < targetDots) {
+        animatedValues[i] = targetDots;
+      }
     }
 
-    drawSlider();
-    fill(0);
-    textSize(18);
-    textAlign(LEFT, TOP);
-    text(labels[first], sliderLeft, sliderY + 25);
-    textAlign(RIGHT, TOP);
-    text(labels[last - 1], sliderRight, sliderY + 25);
+    // Draw circles
+    fill(colors[i]);
+
+    for (let j = 0; j < animatedValues[i]; j++) {
+
+      let angle = j * TWO_PI / maxDots + PI;
+
+      let x = cos(angle) * radius;
+      let y = sin(angle) * radius;
+
+      // Growing and shrinking effect
+      let size = (animatedValues[i] - j) * dia;
+      size = constrain(size, 0, dia);
+
+      circle(x, y, size);
+    }
+  }
+
+  // Text in the center
+  textAlign(CENTER, CENTER);
+
+  fill(255);
+  textSize(34);
+  text(table.getString(day, "Day"), 0, -16);
+
+  fill(170);
+  textSize(15);
+  text("Weather overview", 0, 16);
+
+  pop();
+
+  // Legend
+  textAlign(LEFT, CENTER);
+  textSize(14);
+
+  for (let i = 0; i < elements.length; i++) {
+
+    let value = table.getNum(day, elements[i]);
+    let y = 40 + i * 30;
+
+    fill(colors[i]);
+    circle(30, y, 10);
+
+    fill(255);
+    text(elements[i] + ": " + value + " " + units[i], 50, y);
+  }
+
+  // Daily recommendation
+  weatherTip(centerX, tipY);
 }
 
-function drawSlider() {
-    // the track, and the selected part
-    stroke(220);
-    strokeWeight(4);
-    line(sliderLeft, sliderY, sliderRight, sliderY);
-    stroke(0);
-    line(handleX1, sliderY, handleX2, sliderY);
-    noStroke();
+// Function for daily weather tips
+function weatherTip(x, y) {
 
-    // the handles
-    fill(0);
-    circle(handleX1, sliderY, handleRadius * 2);
-    circle(handleX2, sliderY, handleRadius * 2);
+  let rain = table.getNum(day, "Rain");
+  let sunshine = table.getNum(day, "Sunshine");
+  let wind = table.getNum(day, "Wind");
+  let clouds = table.getNum(day, "Cloudiness");
+  let temperature = table.getNum(day, "Temperature");
+
+  let tip;
+
+  if (rain >= 80 && wind >= 30) {
+    tip = "Bring a waterproof jacket.";
+    fill(colors[0]);
+
+  } else if (rain >= 50) {
+    tip = "Take an umbrella with you.";
+    fill(colors[0]);
+
+  } else if (temperature >= 25) {
+    tip = "Wear light clothing and stay hydrated.";
+    fill(colors[4]);
+
+  } else if (sunshine >= 7) {
+    tip = "Don't forget your sunglasses.";
+    fill(colors[1]);
+
+  } else if (wind >= 25) {
+    tip = "Bring a windproof jacket.";
+    fill(colors[2]);
+
+  } else if (temperature <= 15) {
+    tip = "Dress warmly today.";
+    fill(colors[4]);
+
+  } else if (clouds >= 60) {
+    tip = "Bring an extra layer.";
+    fill(colors[3]);
+
+  } else {
+    tip = "A lovely day for a walk.";
+    fill(255);
+  }
+
+  textAlign(CENTER, CENTER);
+  textSize(16);
+  text(tip, x, y);
 }
 
-function mousePressed() {
-    // which handle is under the mouse?
-    if (dist(mouseX, mouseY, handleX1, sliderY) < 15) {
-        dragging = 1;
-    } else if (dist(mouseX, mouseY, handleX2, sliderY) < 15) {
-        dragging = 2;
-    }
-}
-
-function mouseDragged() {
-    // a handle can't leave the slider, or pass the other handle
-    if (dragging == 1) {
-        handleX1 = constrain(mouseX, sliderLeft, handleX2 - 20);
-    }
-    if (dragging == 2) {
-        handleX2 = constrain(mouseX, handleX1 + 20, sliderRight);
-    }
-}
-
-function mouseReleased() {
-    dragging = 0;
+function windowResized() {
+  resizeCanvas(windowWidth, windowHeight);
 }
