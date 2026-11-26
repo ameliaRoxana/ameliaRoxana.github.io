@@ -84,6 +84,8 @@ if (i % 2 == 0) {
   fill(colors[1]);
   circle(x, y, dia);
 }
-
+function windowResized() {
+  resizeCanvas(windowWidth, windowHeight);
+}
   }
 }
