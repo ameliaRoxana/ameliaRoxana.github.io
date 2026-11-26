@@ -19,7 +19,7 @@ I used ChatGPT.
 
 <!-- Where did AI help? Ideas, writing/debugging code, creating visual or audio assets, explaining a concept, refactoring, … -->
 
-Chat GPT helped me understand and combine programming concepts. I selected specific topics from class such as loops, arrays, modulo, coordinate system, dist(), map() and textToPoints() and asked how I could incorporate them in the code to execute my idea. Further, it helped me troubleshoot the code and quickly detect errors. 
+Chat GPT helped me understand and combine programming concepts. I selected specific topics from class such as loops, arrays, modulo, coordinate system, dist(), map() and textToPoints() and asked how I could incorporate them in the code to execute my idea. Further, it helped me troubleshoot the code and quickly detect errors. I also created a CSV.file with Chat GPT. 
 
 ### How did you use them?
 
