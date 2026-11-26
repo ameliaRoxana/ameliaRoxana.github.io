@@ -1,5 +1,6 @@
 let table;
 let day = 0;
+let font;
 
 // arrays for CSV file
 //elements.length = 5
@@ -23,6 +24,9 @@ async function setup() {
   createCanvas(windowWidth, windowHeight);
   noStroke();
   table = await loadTable("weather_random.csv", ",", "header");
+
+  font = await loadFont("Suisse.ttf");
+  textFont(font);
 }
 
 function draw() {
